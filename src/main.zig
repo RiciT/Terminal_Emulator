@@ -18,11 +18,11 @@
 
 
 const std = @import("std");
-const c = @import("c.zig"); //c libs
+const c = @import("c.zig").c; //c libs
 const cfg = @import("config.zig"); //some config file
-//const term = @import("term.zig"); //script that handles terminal
+const term = @import("term.zig").Term; //script that handles terminal
 //const pty = @import("pty.zig"); // script that handles pty
-const win = @import("x11.zig"); //script that handles x11 window
+const win = @import("x11.zig").Win; //script that handles x11 window
 
 pub fn main() !void {
     // Init subsystems

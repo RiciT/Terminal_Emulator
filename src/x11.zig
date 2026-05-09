@@ -7,7 +7,7 @@
 const std = @import("std");
 const c = @import("c.zig").c; //c libs
 const cfg = @import("config.zig");
-//const term = @import("term.zig");
+const term = @import("term.zig").Term;
 //we dont need pty here
 
 const WinError = error{
@@ -167,5 +167,26 @@ pub const Win = struct {
         };
     }
 
+    pub fn deinit(self: *Win) void {
+        c.XftDrawDestroy(self.xft_draw);
+        c.XftFontClose(self.dpy, self.font);
+        _ = c.XDestroyWindow(self.dpy, self.win);
+        _ = c.XCloseDisplay(self.dpy);
+    }
 
+    //X11 connection to be used in poll()
+    pub fn fd(self: *const Win) i32 {
+        return c.XConnectionNumber(self.dpy);
+    }
+
+    //rendering a single frame
+    pub fn render(self: *Win, t: *term.Term) void {
+        const screen = t.getScreen();
+
+        for (0..t.rows) |row| {
+            for (0..t.cols) |col| {
+
+            }
+        }
+    }
 };
