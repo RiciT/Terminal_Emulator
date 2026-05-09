@@ -120,9 +120,9 @@ pub const Win = struct {
             const r_i = idx / 36;
             const g_i = (idx / 6) % 6;
             const b_i = idx % 6;
-            const r_v: u32 = if (r_i == 0) 0 else r_i * 40 + 55;
-            const g_v: u32 = if (g_i == 0) 0 else g_i * 40 + 55;
-            const b_v: u32 = if (b_i == 0) 0 else b_i * 40 + 55;
+            const r_v: u32 = if (r_i == 0) 0 else @as(u32, @intCast(r_i)) * 40 + 55;
+            const g_v: u32 = if (g_i == 0) 0 else @as(u32, @intCast(g_i)) * 40 + 55;
+            const b_v: u32 = if (b_i == 0) 0 else @as(u32, @intCast(b_i)) * 40 + 55;
             //XRenderColor channels are 16-bit a
             var x_colour = c.XRenderColor{
                 .red = @intCast(r_v * 257),
@@ -130,19 +130,19 @@ pub const Win = struct {
                 .blue = @intCast(b_v * 257),
                 .alpha = 0xFFFF,
             };
-            c.XftColorAllocValue(dpy, visual, cmap, &x_colour, &colours[i]);
+            _ = c.XftColorAllocValue(dpy, visual, cmap, &x_colour, &colours[i]);
         }
 
         //232-255 grayscale
         for (232..256) |i| {
-            const val: u32 = (i - 232) * 10 + 6;
+            const val: u32 = (@as(u32, @intCast(i)) - 232) * 10 + 6;
             var x_colour = c.XRenderColor{
                 .red = @intCast(val * 257),
                 .green = @intCast(val * 257),
                 .blue = @intCast(val * 257),
                 .alpha = 0xFFFF,
             };
-            c.XftColorAllocValue(dpy, visual, cmap, &x_colour, &colours[i]);
+            _ = c.XftColorAllocValue(dpy, visual, cmap, &x_colour, &colours[i]);
         }
 
         //show the window nad flush commands to the X server
@@ -185,8 +185,65 @@ pub const Win = struct {
 
         for (0..t.rows) |row| {
             for (0..t.cols) |col| {
+                const g = &screen[row * t.cols + col];
+                if (!g.filled) continue;
 
+                //reverse order swaps fg and bg
+                const fg: u8 = if (g.attr.reverse) g.bg else g.fg;
+                const bg: u8 = if (g.attr.reverse) g.fg else g.bg;
+
+                const px: c_int = @intCast(cfg.border_px + col * self.cw);
+                const py: c_int = @intCast(cfg.border_px + row * self.ch);
+
+                //fill bg rectangle with bg colour pixel
+                // use XFillRectangle because only solid colours are needed
+                c.XSetForeground(self.dpy, self.gc, self.colours[bg].pixel);
+                _ = c.XFillRectangle(self.dpy, self.win, self.gc, px, py, self.cw, self.ch);
+
+                //draw character (we can skip spaces)
+                if (g.char == ' ' and g.char != 0 and !g.attr.invisible) {
+                    var buf: [4]u8 = undefined;
+                    const len = std.unicode.utf8Encode(g.char, &buf) catch 1;
+
+                    //XftDrawStringUtf8 takes the baseline y so modify with the ascent
+                    const baseline: c_int = py + @as(c_int, @intCast(self.ca));
+
+                    c.XftDrawStringUtf8(
+                        self.xft_draw,
+                        &self.colours[fg],
+                        self.font,
+                        px,
+                        baseline,
+                        &buf,
+                        @intCast(len)
+                    );
+
+                    //underline
+                    if (g.attr.underline) {
+                        c.XSetForeground(self.dpy, self.gc, self.colours[fg].pixel);
+                        _ = c.XDrawLine(self.dpy, self.win, self.gc, px, baseline + 1,
+                            px + @as(c_int, @intCast(self.cw)), baseline + 1);
+                    }
+                }
+
+                g.filled = false;
             }
         }
+
+        //draw cursor
+        if (!t.cursor.hidden) {
+            const cx: c_int = @intCast(cfg.border_px + @as(usize, @intCast(t.cursor.x)) * self.cw);
+            const cy: c_int = @intCast(cfg.border_px + @as(usize, @intCast(t.cursor.y)) * self.ch);
+            c.XSetForeground(self.dpy, self.gc, self.colours[cfg.default_fg].pixel);
+            _ = c.XDrawRectangle(self.dpy, self.win, self.gc,
+                cx, cy,
+                self.cw - 1,
+                self.ch - 1);
+        }
+
+        //flush all drawing commands to the X server in one batch
+        _ = c.XFlush(self.dpy);
     }
+
+    //Window Resizing
 };

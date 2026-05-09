@@ -20,17 +20,17 @@
 const std = @import("std");
 const c = @import("c.zig").c; //c libs
 const cfg = @import("config.zig"); //some config file
-const term = @import("term.zig").Term; //script that handles terminal
+const Term = @import("term.zig").Term; //script that handles terminal
 //const pty = @import("pty.zig"); // script that handles pty
-const win = @import("x11.zig").Win; //script that handles x11 window
+const Win = @import("x11.zig").Win; //script that handles x11 window
 
 pub fn main() !void {
     // Init subsystems
-    //win.init -> defer win.deinit()
-    //
+    var win = try Win.init(cfg.default_cols, cfg.default_rows);
+    defer win.deinit();
+    std.Thread.sleep(5_000_000_000);
     //term.init -> defer term.deinit()
-    //
-    //pty.spawn -> defer pty.deinit()
+    // pty.spawn -> defer pty.deinit()
 
     //state declaration
 
@@ -38,5 +38,4 @@ pub fn main() !void {
     //while(true) {
         //do stuff
     //}
-    std.debug.print("build working", .{});
 }
