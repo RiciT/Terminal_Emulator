@@ -18,6 +18,7 @@
 
 
 const std = @import("std");
+const c = @import("c.zig"); //c libs
 //const cfg = @import("config.zig") //some config file
 //const term = @import("term.zig") //script that handles terminal
 //const pty = @import("pty.zig") // script that handles pty
@@ -34,7 +35,8 @@ pub fn main() !void {
     //state declaration
 
     //main event loop
-    while(true) {
+    //while(true) {
         //do stuff
-    }
+    //}
+    std.debug.print("build working", .{});
 }

@@ -2,6 +2,7 @@
 
 const c = @cImport({
     //X11
+    @cInclude("X11/X.h");
     @cInclude("X11/Xlib.h");
     @cInclude("X11/Xutil.h"); //XSizeHints, XWMHints
     @cInclude("X11/keysym.h"); // XK_.., keys
