@@ -12,4 +12,7 @@ const c = @import("c.zig"); //c libs
 
 pub const Win = struct {
     dpy: *c.Display,
+    win: c.Window,
+    screen: c_int,
+    visual: *c.Visual,
 };
