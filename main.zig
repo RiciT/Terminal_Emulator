@@ -22,3 +22,19 @@ const std = @import("std");
 //const term = @import("term.zig") //script that handles terminal
 //const pty = @import("pty.zig") // script that handles pty
 //const win = @import("x11.zig") //script that handles x11 window
+
+pub fn main() !void {
+    // Init subsystems
+    //win.init -> defer win.deinit()
+    //
+    //term.init -> defer term.deinit()
+    //
+    //pty.spawn -> defer pty.deinit()
+
+    //state declaration
+
+    //main event loop
+    while(true) {
+        //do stuff
+    }
+}
