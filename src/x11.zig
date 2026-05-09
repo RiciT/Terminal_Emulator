@@ -246,4 +246,75 @@ pub const Win = struct {
     }
 
     //Window Resizing
+    pub fn resize(self: *Win, pw: u32, ph: u32) struct { cols: u32, rows: u32 } {
+        self.pw = pw;
+        self.ph = ph;
+
+        //redo XftDraw - cache drawables which changed on resize
+        c.XftDrawDestroy(self.xft_draw);
+        self.xft_draw = c.XftDrawCreate(self.dpy, self.win, self.visual, self.cmap).?;
+
+        const cols = (pw - 2 * cfg.border_px) / self.cw;
+        const rows = (ph - 2 * cfg.border_px) / self.ch;
+        return .{ .cols = @max(1, cols), .rows = @max(1, rows) };
+    }
+
+    //Keyboard events -> byte sequences
+    //This is to process escape sequences
+    //for now only implement 'xterm-256color'
+    pub fn translateKey(e: *c.XKeyEvent, buf: []u8,) []const u8 {
+        var keysym: c.KeySym = undefined;
+        var xbuf: [32]u8 = undefined;
+
+        //XLookupStrings handles dead keys and modifiers
+        const xlen: usize = @intCast(c.XLookupString(e, &xbuf, xbuf.len, &keysym, null));
+
+        //keymap of special key of xterm esc sequences
+        const special: ?[]const u8 = switch (keysym) {
+            c.XK_Return    => "\r",
+            c.XK_BackSpace => "\x7f",
+            c.XK_Delete    => "\x1b[3~",
+            c.XK_Escape    => "\x1b",
+            c.XK_Tab       => "\t",
+            c.XK_Up        => "\x1b[A",
+            c.XK_Down      => "\x1b[B",
+            c.XK_Right     => "\x1b[C",
+            c.XK_Left      => "\x1b[D",
+            c.XK_Home      => "\x1b[H",
+            c.XK_End       => "\x1b[F",
+            c.XK_Page_Up   => "\x1b[5~",
+            c.XK_Page_Down => "\x1b[6~",
+            c.XK_Insert    => "\x1b[2~",
+            c.XK_F1        => "\x1bOP",
+            c.XK_F2        => "\x1bOQ",
+            c.XK_F3        => "\x1bOR",
+            c.XK_F4        => "\x1bOS",
+            c.XK_F5        => "\x1b[15~",
+            c.XK_F6        => "\x1b[17~",
+            c.XK_F7        => "\x1b[18~",
+            c.XK_F8        => "\x1b[19~",
+            c.XK_F9        => "\x1b[20~",
+            c.XK_F10       => "\x1b[21~",
+            c.XK_F11       => "\x1b[23~",
+            c.XK_F12       => "\x1b[24~",
+            else           => null,
+        };
+
+        if (special) |s| {
+            //copy the literal into the caller's buffer
+            //so return val lifetime is tied to buf rather than the literal
+            const n = @min(s.len, buf.len);
+            @memcpy(buf[0..n], s[0..n]);
+            return buf[0..n];
+        }
+
+        //get printable char
+        if (xlen > 0) {
+            const n = @min(xlen, buf.len);
+            @memcpy(buf[0..n], xbuf[0..n]);
+            return buf[0..n];
+        }
+
+        return buf[0..0]; //theres nothing to return if we get here
+    }
 };

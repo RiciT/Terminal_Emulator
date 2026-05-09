@@ -28,7 +28,8 @@ pub fn main() !void {
     // Init subsystems
     var win = try Win.init(cfg.default_cols, cfg.default_rows);
     defer win.deinit();
-    std.Thread.sleep(5_000_000_000);
+
+    std.Thread.sleep(3_000_000_000);
     //term.init -> defer term.deinit()
     // pty.spawn -> defer pty.deinit()
 
