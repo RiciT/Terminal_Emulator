@@ -5,7 +5,7 @@
 //Text baseline is at y + ascent so not the top of the cell
 
 const std = @import("std");
-const c = @import("c.zig"); //c libs
+const c = @import("c.zig").c; //c libs
 //const cfg = @import("config.zig");
 //const term = @import("term.zig");
 //we dont need pty here
@@ -14,5 +14,5 @@ pub const Win = struct {
     dpy: *c.Display,
     win: c.Window,
     screen: c_int,
-    visual: *c.Visual,
+    visual: *c,
 };

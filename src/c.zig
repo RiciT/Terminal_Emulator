@@ -1,6 +1,6 @@
 //everything we need from the c libraries of X11 and other c libraries for sys and pty
 
-const c = @cImport({
+pub const c = @cImport({
     //X11
     @cInclude("X11/X.h");
     @cInclude("X11/Xlib.h");
