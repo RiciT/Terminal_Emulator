@@ -13,6 +13,7 @@ const cfg = @import("config.zig");
 const WinError = error{
     NoDisplay,
     FontNotFound,
+    XftDrawFailure,
 };
 
 pub const Win = struct {
@@ -25,7 +26,7 @@ pub const Win = struct {
 
     //text
     font: *c.XftFont,
-    xftdraw: *c.XftDraw,
+    xft_draw: *c.XftDraw,
     gc: c.GC,
 
     //pre-allocate all 256 xterm colours
@@ -79,5 +80,92 @@ pub const Win = struct {
 
         //WM Hints - accomodating snapping
         var size_hints = std.mem.zeroes(c.XSizeHints);
+        size_hints.width = @intCast(pw);
+        size_hints.height = @intCast(ph);
+        size_hints.width_inc = @intCast(cw);
+        size_hints.height_inc = @intCast(ch);
+        size_hints.min_width = @intCast(2 * cfg.border_px + cw);
+        size_hints.min_height = @intCast(2 * cfg.border_px + ch);
+        c.XSetWMNormalHints(dpy, win, &size_hints);
+        _ = c.XStoreName(dpy, win, "termemul");
+
+        //tell X which events to care about
+        //KeyPressMask - keyboard input
+        //ExposureMask - window revealed -> redraw needed
+        //StructureNotifyMask - resize / destroy events
+        _ = c.XSelectInput(dpy, win,
+            c.KeyPressMask | c.ExposureMask | c.StructureNotifyMask);
+
+        //create an Xft drawing context fo this window
+        //this is will be handed for XftDraw* calls
+        const xft_draw = c.XftDrawCreate(dpy, win, visual, cmap) orelse return error.XftDrawFailure;
+
+        //plain X GC for background fills -> XFillRectangle, XDrawLine
+        var gc_vals = std.mem.zeroes(c.XGCValues);
+        const gc = c.XCreateGC(dpy, win, 0, &gc_vals);
+
+        //allocate colours
+        var colours: [256]c.XftColor = undefined;
+
+        //0-15 named palette from cfg
+        for (cfg.palette16, 0..) |hex, i| {
+            if (c.XftColorAllocName(dpy, visual, cmap, hex.ptr, &colours[i]) == 0)
+                _ = c.XftColorAllocName(dpy, visual, cmap, "#ffffff", &colours[i]);
+        }
+
+        //16-231 rest is 6x6x6 rgb colour cube
+        // formula: index = 16 + 36r + 6g + b (r,g,b in 0..5) -> ex: 0->#000000, 1->#5f0000
+        for (16..232) |i| {
+            const idx = i - 16;
+            const r_i = idx / 36;
+            const g_i = (idx / 6) % 6;
+            const b_i = idx % 6;
+            const r_v: u32 = if (r_i == 0) 0 else r_i * 40 + 55;
+            const g_v: u32 = if (g_i == 0) 0 else g_i * 40 + 55;
+            const b_v: u32 = if (b_i == 0) 0 else b_i * 40 + 55;
+            //XRenderColor channels are 16-bit a
+            var x_colour = c.XRenderColor{
+                .red = @intCast(r_v * 257),
+                .green = @intCast(g_v * 257),
+                .blue = @intCast(b_v * 257),
+                .alpha = 0xFFFF,
+            };
+            c.XftColorAllocValue(dpy, visual, cmap, &x_colour, &colours[i]);
+        }
+
+        //232-255 grayscale
+        for (232..256) |i| {
+            const val: u32 = (i - 232) * 10 + 6;
+            var x_colour = c.XRenderColor{
+                .red = @intCast(val * 257),
+                .green = @intCast(val * 257),
+                .blue = @intCast(val * 257),
+                .alpha = 0xFFFF,
+            };
+            c.XftColorAllocValue(dpy, visual, cmap, &x_colour, &colours[i]);
+        }
+
+        //show the window nad flush commands to the X server
+        _ = c.XMapWindow(dpy, win);
+        _ = c.XFlush(dpy);
+
+        return Win{
+            .dpy = dpy,
+            .win = win,
+            .screen = screen,
+            .visual = visual,
+            .cmap = cmap,
+            .font = font,
+            .xft_draw = xft_draw,
+            .gc = gc,
+            .colours = colours,
+            .cw = cw,
+            .ch = ch,
+            .ca = ca,
+            .pw = pw,
+            .ph = ph,
+        };
     }
+
+
 };
