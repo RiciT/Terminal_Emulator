@@ -80,8 +80,8 @@ pub const Win = struct {
         // CWBorderPixel - neede when depth != parent depth
         // CWBitGravity - keep contents aligned to where
         var wa = std.mem.zeroes(c.XSetWindowAttributes);
-        wa.background_pixel = c.BlackPixel(dpy, screen);
-        wa.border_pixel = c.BlackPixel(dpy, screen);
+        wa.background_pixel = 0; //c.BlackPixel(dpy, screen);
+        wa.border_pixel = 0; //c.BlackPixel(dpy, screen);
         wa.bit_gravity = c.NorthWestGravity;
         wa.colormap = cmap;
 
@@ -178,6 +178,12 @@ pub const Win = struct {
             _ = c.XftColorAllocValue(dpy, visual, cmap, &x_colour, &colours[i]);
         }
 
+        //apply the colours properly
+        _ = c.XSetWindowBackground(dpy, win, colours[cfg.default_bg].pixel);
+
+        //force X to repaint the window
+        _ = c.XClearWindow(dpy, win);
+
         //show the window nad flush commands to the X server
         _ = c.XMapWindow(dpy, win);
         _ = c.XFlush(dpy);
@@ -242,8 +248,10 @@ pub const Win = struct {
 
                 //fill bg rectangle with bg colour pixel
                 // use XFillRectangle because only solid colours are needed
-                _ = c.XSetForeground(self.dpy, self.gc, self.colours[bg].pixel);
-                _ = c.XFillRectangle(self.dpy, self.win, self.gc, px, py, self.cw, self.ch);
+                //_ = c.XSetForeground(self.dpy, self.gc, self.colours[bg].pixel);
+                //_ = c.XFillRectangle(self.dpy, self.win, self.gc, px, py, self.cw, self.ch);
+                //since we dont just need solid colours anymore
+                c.XftDrawRect(self.xft_draw, &self.colours[bg], px, py, self.cw, self.ch);
 
                 //draw character (we can skip spaces)
                 if (g.char != ' ' and g.char != 0 and !g.attr.invisible) {
