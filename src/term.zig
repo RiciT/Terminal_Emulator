@@ -576,6 +576,8 @@ pub const Term = struct {
         while (r >= row + lines) : (r -= 1) {
             @memcpy(scr[r * self.cols..(r + 1) * self.cols],
                 scr[(r - lines) * self.cols..(r - lines + 1) * self.cols]);
+            //force redraw on the moved lines
+            for (scr[r * self.cols..(r + 1) * self.cols]) |*g| g.filled = true;
             if (r == 0) break;
         }
         var r2 = row;
@@ -588,9 +590,12 @@ pub const Term = struct {
         const bot = self.scroll_bot;
         const scr = self.cur();
         var r = row;
-        while (r + lines <= bot) : (r += 1)
+        while (r + lines <= bot) : (r += 1) {
             @memcpy(scr[r * self.cols..(r + 1) * self.cols],
                 scr[(r + lines) * self.cols..(r + lines + 1) * self.cols]);
+            //force redraw on the moved line
+            for (scr[r * self.cols..(r + 1) * self.cols]) |*g| g.filled = true;
+        }
         while (r <= bot) : (r += 1) self.clearRow(r);
     }
 
@@ -602,7 +607,7 @@ pub const Term = struct {
         const base = row * self.cols;
         const blank = Glyph{ .fg = self.cursor.fg, .bg = self.cursor.bg, .filled = true };
         var c = self.cols - 1;
-        while (c >= col + chars) : (c -= 1) scr[base + c] = scr[base + c - chars];
+        while (c >= col + chars) : (c -= 1) { scr[base + c] = scr[base + c - chars]; scr[base + c].filled = true; }
         var c2 = col;
         while (c2 < col + chars and c2 < self.cols) : (c2 += 1) scr[base + c2] = blank;
     }
@@ -615,7 +620,7 @@ pub const Term = struct {
         const base = row * self.cols;
         const blank = Glyph{ .fg = self.cursor.fg, .bg = self.cursor.bg, .filled = true };
         var c = col;
-        while (c + chars < self.cols) : (c += 1) scr[base + c] = scr[base + c + chars];
+        while (c + chars < self.cols) : (c += 1) { scr[base + c] = scr[base + c + chars]; scr[base + c].filled = true; }
         while (c < self.cols) : (c += 1) scr[base + c] = blank;
     }
 
