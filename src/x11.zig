@@ -80,8 +80,8 @@ pub const Win = struct {
         // CWBorderPixel - neede when depth != parent depth
         // CWBitGravity - keep contents aligned to where
         var wa = std.mem.zeroes(c.XSetWindowAttributes);
-        wa.background_pixel = 0; //instead of c.BlackPixel(dpy, screen);
-        wa.border_pixel = 0; //c.BlackPixel(dpy, screen);
+        wa.background_pixel = c.BlackPixel(dpy, screen);
+        wa.border_pixel = c.BlackPixel(dpy, screen);
         wa.bit_gravity = c.NorthWestGravity;
         wa.colormap = cmap;
 
@@ -134,10 +134,10 @@ pub const Win = struct {
         //0-15 named palette from cfg
         for (cfg.palette16, 0..) |hex, i| {
             if (i == cfg.default_bg and has_alpha) {
-                //manually construct the background color to give it 0 alpha
+                //manually construct the background color to give it alpha
                 var bg_color = c.XRenderColor{
                     .red = 0, .green = 0, .blue = 0,
-                    .alpha = 0xAA00,
+                    .alpha = 0xCC00,
                 };
                 _ = c.XftColorAllocValue(dpy, visual, cmap, &bg_color, &colours[i]);
             } else {
