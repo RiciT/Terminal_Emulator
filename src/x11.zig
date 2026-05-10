@@ -50,8 +50,19 @@ pub const Win = struct {
         const dpy = c.XOpenDisplay(null) orelse return error.NoDisplay;
         const screen = c.DefaultScreen(dpy);
         const root = c.RootWindow(dpy, screen);
-        const visual = c.DefaultVisual(dpy, screen);
-        const cmap = c.DefaultColormap(dpy, screen);
+        //const visual = c.DefaultVisual(dpy, screen);
+        //const cmap = c.DefaultColormap(dpy, screen);
+
+        //32-bit visual so transparency works properly
+        var vinfo: c.XVisualInfo = undefined;
+        //c.TrueColor = 4?
+        const has_alpha = c.XMatchVisualInfo(dpy, screen, 32, c.TrueColor, &vinfo) != 0;
+
+        const visual = if (has_alpha) vinfo.visual else c.DefaultVisual(dpy, screen);
+        const depth: c_int = if (has_alpha) 32 else c.DefaultDepth(dpy, screen);
+
+        //create cmap for non-default visual
+        const cmap = c.XCreateColormap(dpy, root, visual, c.AllocNone);
 
         //Xft font lookup via fontconfig
         const font = c.XftFontOpenName(dpy, screen, cfg.font_name.ptr) orelse return error.FontNotFound;
@@ -69,15 +80,16 @@ pub const Win = struct {
         // CWBorderPixel - neede when depth != parent depth
         // CWBitGravity - keep contents aligned to where
         var wa = std.mem.zeroes(c.XSetWindowAttributes);
-        wa.background_pixel = c.BlackPixel(dpy, screen);
-        wa.border_pixel = c.BlackPixel(dpy, screen);
+        wa.background_pixel = 0; //instead of c.BlackPixel(dpy, screen);
+        wa.border_pixel = 0; //c.BlackPixel(dpy, screen);
         wa.bit_gravity = c.NorthWestGravity;
+        wa.colormap = cmap;
 
         const win = c.XCreateWindow(
             dpy, root,
             0, 0, pw, ph,
-            0, c.CopyFromParent, c.InputOutput, visual,
-            c.CWBackPixel | c.CWBorderPixel | c.CWBitGravity,
+            0, depth, c.InputOutput, visual,
+            c.CWBackPixel | c.CWBorderPixel | c.CWBitGravity | c.CWColormap,
             &wa
         );
 
@@ -121,8 +133,17 @@ pub const Win = struct {
 
         //0-15 named palette from cfg
         for (cfg.palette16, 0..) |hex, i| {
-            if (c.XftColorAllocName(dpy, visual, cmap, hex.ptr, &colours[i]) == 0)
-                _ = c.XftColorAllocName(dpy, visual, cmap, "#ffffff", &colours[i]);
+            if (i == cfg.default_bg and has_alpha) {
+                //manually construct the background color to give it 0 alpha
+                var bg_color = c.XRenderColor{
+                    .red = 0, .green = 0, .blue = 0,
+                    .alpha = 0xAA00,
+                };
+                _ = c.XftColorAllocValue(dpy, visual, cmap, &bg_color, &colours[i]);
+            } else {
+                if (c.XftColorAllocName(dpy, visual, cmap, hex.ptr, &colours[i]) == 0)
+                    _ = c.XftColorAllocName(dpy, visual, cmap, "#ffffff", &colours[i]);
+            }
         }
 
         //16-231 rest is 6x6x6 rgb colour cube
@@ -182,6 +203,11 @@ pub const Win = struct {
     pub fn deinit(self: *Win) void {
         c.XftDrawDestroy(self.xft_draw);
         c.XftFontClose(self.dpy, self.font);
+
+        if (self.cmap != c.DefaultColormap(self.dpy, self.screen)) {
+            _ = c.XFreeColormap(self.dpy, self.cmap);
+        }
+
         _ = c.XDestroyWindow(self.dpy, self.win);
         _ = c.XCloseDisplay(self.dpy);
     }
