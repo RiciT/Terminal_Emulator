@@ -1,10 +1,10 @@
 // Config file
 
 // Xft font name
-pub const font_name: [:0]const u8 = "monospace:size=13";
+pub const font_name: [:0]const u8 = "LiterationMonoNerdFont-Regular:size=11";
 
 // shell to exec inside the pty
-pub const shell: [:0]const u8 = "/bin/bash";
+pub const shell: [:0]const u8 = "/bin/zsh";
 
 // starting terminal size
 pub const default_cols: u32 = 80;
