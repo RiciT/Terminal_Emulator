@@ -102,13 +102,13 @@ pub const Win = struct {
         size_hints.min_width = @intCast(2 * cfg.border_px + cw);
         size_hints.min_height = @intCast(2 * cfg.border_px + ch);
         c.XSetWMNormalHints(dpy, win, &size_hints);
-        _ = c.XStoreName(dpy, win, "termemul");
+        _ = c.XStoreName(dpy, win, "ZigTerminal");
 
         //WM Class hints - for picom mainly
         const class_hint = c.XAllocClassHint();
         if (class_hint != null) {
-            class_hint.*.res_name = @ptrCast(@constCast("termemul").ptr);
-            class_hint.*.res_class = @ptrCast(@constCast("Termemul").ptr);
+            class_hint.*.res_name = @ptrCast(@constCast("zigterminal").ptr);
+            class_hint.*.res_class = @ptrCast(@constCast("Zigterminal").ptr);
             _ = c.XSetClassHint(dpy, win, class_hint);
             _ = c.XFree(class_hint);
         }
