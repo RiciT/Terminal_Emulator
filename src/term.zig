@@ -282,7 +282,6 @@ pub const Term = struct {
 
     //characther placement
     fn putChar(self: *Term, cp: u21) void {
-        std.debug.print("putchar cp={} fg={} bg={}\n", .{cp, self.cursor.fg, self.cursor.bg});
         //wrap line
         if (self.cursor.x >= self.cols) {
             self.cursor.x = 0;

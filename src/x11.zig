@@ -201,7 +201,7 @@ pub const Win = struct {
                 _ = c.XFillRectangle(self.dpy, self.win, self.gc, px, py, self.cw, self.ch);
 
                 //draw character (we can skip spaces)
-                if (g.char == ' ' and g.char != 0 and !g.attr.invisible) {
+                if (g.char != ' ' and g.char != 0 and !g.attr.invisible) {
                     var buf: [4]u8 = undefined;
                     const len = std.unicode.utf8Encode(g.char, &buf) catch 1;
 
