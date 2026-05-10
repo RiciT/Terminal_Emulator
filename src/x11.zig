@@ -89,6 +89,15 @@ pub const Win = struct {
         c.XSetWMNormalHints(dpy, win, &size_hints);
         _ = c.XStoreName(dpy, win, "termemul");
 
+        //WM Class hints - for picom mainly
+        const class_hint = c.XAllocClassHint();
+        if (class_hint != null) {
+            class_hint.*.res_name = @constCast("termemul");
+            class_hint.*.res_class = @constCast("termemul");
+            _ = c.XSetClassHint(dpy, win, class_hint);
+            _ = c.XFree(class_hint);
+        }
+
         //tell X which events to care about
         //KeyPressMask - keyboard input
         //ExposureMask - window revealed -> redraw needed

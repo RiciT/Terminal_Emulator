@@ -92,6 +92,7 @@ pub const Term = struct {
     csi_private: bool = false, // set when '?' seen - (DEC private modes)
     osc_buf: [MAX_OSC]u8 = undefined,
     osc_len: u32 = 0,
+    is_asc: bool = false,
 
     //scroll region
     scroll_top: u32 = 0,
@@ -170,6 +171,8 @@ pub const Term = struct {
             0x09 => { self.doTab(); return; }, //HT
             0x0A, 0x0B, 0x0C => { self.doLinefeed(); return; }, //LF VT FF
             0x0D => { self.cursor.x = 0; return; }, // CR
+            0x0E => { self.is_asc = true; return; },  //SO - Switch to G1 (ACS)
+            0x0F => { self.is_asc = false; return; }, //SI - Switch to G0 (ASCII)
             0x1B => { self.state = .escape; return; }, //ESC
             else => {},
         }
@@ -254,6 +257,25 @@ pub const Term = struct {
         //for now we parse but discard.
     }
 
+    fn mapAsc(cp: u21) u21 {
+        return switch (cp) {
+            'j' => 0x2518, // ┘
+            'k' => 0x2510, // ┐
+            'l' => 0x250C, // ┌
+            'm' => 0x2514, // └
+            'n' => 0x253C, // ┼
+            'q' => 0x2500, // ─
+            'x' => 0x2502, // │
+            't' => 0x251C, // ├
+            'u' => 0x2524, // ┤
+            'v' => 0x2534, // ┴
+            'w' => 0x252C, // ┬
+            'a' => 0x2592, // ▒
+            '`' => 0x25C6, // ◆
+            else => cp,
+        };
+    }
+
     //helpers
     inline fn p(self: *const Term, idx: u8, default: i32) i32 {
         if (idx < self.param_count and self.params[idx] != 0)
@@ -282,6 +304,9 @@ pub const Term = struct {
 
     //characther placement
     fn putChar(self: *Term, cp: u21) void {
+        //check if we are shifted to asc or not
+        const real_cp = if (self.is_asc) mapAsc(cp) else cp;
+
         //wrap line
         if (self.cursor.x >= self.cols) {
             self.cursor.x = 0;
@@ -291,7 +316,7 @@ pub const Term = struct {
 
         const g = self.cell(@intCast(self.cursor.x), @intCast(self.cursor.y));
         g.* = Glyph{
-            .char = cp,
+            .char = real_cp,
             .fg = self.cursor.fg,
             .bg = self.cursor.bg,
             .attr = self.cursor.attr,
