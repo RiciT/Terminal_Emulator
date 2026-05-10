@@ -92,7 +92,7 @@ pub const Term = struct {
     csi_private: bool = false, // set when '?' seen - (DEC private modes)
     osc_buf: [MAX_OSC]u8 = undefined,
     osc_len: u32 = 0,
-    is_asc: bool = false,
+    is_acs : bool = false,
 
     //scroll region
     scroll_top: u32 = 0,
@@ -171,8 +171,8 @@ pub const Term = struct {
             0x09 => { self.doTab(); return; }, //HT
             0x0A, 0x0B, 0x0C => { self.doLinefeed(); return; }, //LF VT FF
             0x0D => { self.cursor.x = 0; return; }, // CR
-            0x0E => { self.is_asc = true; return; },  //SO - Switch to G1 (ACS)
-            0x0F => { self.is_asc = false; return; }, //SI - Switch to G0 (ASCII)
+            0x0E => { self.is_acs = true; return; },  //SO - Switch to G1 (ACS)
+            0x0F => { self.is_acs = false; return; }, //SI - Switch to G0 (ASCII)
             0x1B => { self.state = .escape; return; }, //ESC
             else => {},
         }
@@ -182,7 +182,14 @@ pub const Term = struct {
             .escape => self.doEscape(byte),
             .csi => self.doCsi(byte),
             .osc => self.doOsc(byte),
-            .charset => self.state = .ground, //consume and reset
+            .charset => {
+                if (byte == '0') {
+                    self.is_acs = true; //switch to DEC special graphics
+                } else if (byte == 'B') {
+                    self.is_acs = false; //switch to ASCII
+                }
+            self.state = .ground;
+            }, //consume and reset
         }
     }
 
@@ -307,7 +314,7 @@ pub const Term = struct {
     //characther placement
     fn putChar(self: *Term, cp: u21) void {
         //check if we are shifted to asc or not
-        const real_cp = if (self.is_asc) mapAsc(cp) else cp;
+        const real_cp = if (self.is_acs) mapAsc(cp) else cp;
 
         //wrap line
         if (self.cursor.x >= self.cols) {

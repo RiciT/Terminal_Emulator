@@ -41,6 +41,9 @@ pub const Win = struct {
     pw: u32,
     ph: u32,
 
+    old_cursor_x: i32 = 0,
+    old_cursor_y: i32 = 0,
+
     // INIT window, font, colours
     pub fn init(cols: u32, rows: u32) !Win {
         //connect to X server by $DISPLAY
@@ -191,6 +194,13 @@ pub const Win = struct {
     //rendering a single frame
     pub fn render(self: *Win, t: *term.Term) void {
         const screen = t.getScreen();
+
+        if (self.old_cursor_x >= 0 and self.old_cursor_x < t.cols and self.old_cursor_y >= 0 and self.old_cursor_y < t.rows)
+            screen[@as(usize, @intCast(self.old_cursor_y)) * t.cols + @as(usize, @intCast(self.old_cursor_x))].filled = true;
+        if (t.cursor.x >= 0 and t.cursor.x < t.cols and t.cursor.y >= 0 and t.cursor.y < t.rows)
+            screen[@as(usize, @intCast(t.cursor.y)) * t.cols + @as(usize, @intCast(t.cursor.x))].filled = true;
+        self.old_cursor_x = t.cursor.x;
+        self.old_cursor_y = t.cursor.y;
 
         for (0..t.rows) |row| {
             for (0..t.cols) |col| {
