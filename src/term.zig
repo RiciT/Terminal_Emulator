@@ -282,6 +282,7 @@ pub const Term = struct {
 
     //characther placement
     fn putChar(self: *Term, cp: u21) void {
+        std.debug.print("putchar cp={} fg={} bg={}\n", .{cp, self.cursor.fg, self.cursor.bg});
         //wrap line
         if (self.cursor.x >= self.cols) {
             self.cursor.x = 0;
@@ -417,6 +418,8 @@ pub const Term = struct {
         const count = if (self.param_count == 0) @as(u8, 1) else self.param_count;
         var i: u8 = 0;
         while (i < count) : (i += 1) {
+            //ignore trailing ; that isnt explicitly a reset
+            if (self.params[i] == 0 and i > 0 and i == count - 1) continue;
             switch (self.params[i]) {
                 0 => { self.cursor.attr = .{}; self.cursor.fg = cfg.default_fg; self.cursor.bg = cfg.default_bg; },
                 1 => self.cursor.attr.bold = true,

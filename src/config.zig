@@ -18,7 +18,7 @@ pub const tab_width: u32 = 8;
 
 // which of the 16 palette entries are default fg / bg
 pub const default_fg: u8 = 15; // bright white
-pub const default_bg: u8 = 0;  // black
+pub const default_bg: u8 = 1;  // black
 
 // color palette
 // in hex so Xft can parse it directly
