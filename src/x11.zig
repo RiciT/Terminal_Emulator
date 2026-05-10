@@ -7,7 +7,7 @@
 const std = @import("std");
 const c = @import("c.zig").c; //c libs
 const cfg = @import("config.zig");
-const term = @import("term.zig").Term;
+const term = @import("term.zig");
 //we dont need pty here
 
 const WinError = error{
@@ -197,7 +197,7 @@ pub const Win = struct {
 
                 //fill bg rectangle with bg colour pixel
                 // use XFillRectangle because only solid colours are needed
-                c.XSetForeground(self.dpy, self.gc, self.colours[bg].pixel);
+                _ = c.XSetForeground(self.dpy, self.gc, self.colours[bg].pixel);
                 _ = c.XFillRectangle(self.dpy, self.win, self.gc, px, py, self.cw, self.ch);
 
                 //draw character (we can skip spaces)
@@ -220,7 +220,7 @@ pub const Win = struct {
 
                     //underline
                     if (g.attr.underline) {
-                        c.XSetForeground(self.dpy, self.gc, self.colours[fg].pixel);
+                        _ = c.XSetForeground(self.dpy, self.gc, self.colours[fg].pixel);
                         _ = c.XDrawLine(self.dpy, self.win, self.gc, px, baseline + 1,
                             px + @as(c_int, @intCast(self.cw)), baseline + 1);
                     }
@@ -234,7 +234,7 @@ pub const Win = struct {
         if (!t.cursor.hidden) {
             const cx: c_int = @intCast(cfg.border_px + @as(usize, @intCast(t.cursor.x)) * self.cw);
             const cy: c_int = @intCast(cfg.border_px + @as(usize, @intCast(t.cursor.y)) * self.ch);
-            c.XSetForeground(self.dpy, self.gc, self.colours[cfg.default_fg].pixel);
+            _ = c.XSetForeground(self.dpy, self.gc, self.colours[cfg.default_fg].pixel);
             _ = c.XDrawRectangle(self.dpy, self.win, self.gc,
                 cx, cy,
                 self.cw - 1,

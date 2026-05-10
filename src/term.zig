@@ -152,7 +152,7 @@ pub const Term = struct {
         self.filled = true;
     }
 
-    pub fn getScreen(self: *const Term) []const Glyph {
+    pub fn getScreen(self: *Term) []Glyph {
         return if (self.use_alt) self.alt_screen else self.screen;
     }
 

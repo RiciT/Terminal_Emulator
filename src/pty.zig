@@ -30,8 +30,8 @@ pub const Pty = struct {
 
         //initial window size so the shell knows its dimensions
         var win_size = c.struct_winsize{
-            .ws_col = cols,
-            .ws_row = rows,
+            .ws_col = @intCast(cols),
+            .ws_row = @intCast(rows),
             .ws_xpixel = 0,
             .ws_ypixel = 0,
         };
@@ -69,7 +69,7 @@ pub const Pty = struct {
             //replace child with shell - search PATH with execvp
             //argv must be null terminated but cast is safe here
             var argv = [_:null]?[*:0]const u8{ cfg.shell.ptr, null };
-            _ = c.execvp(cfg.shell.ptr, &argv);
+            _ = c.execvp(cfg.shell.ptr, @ptrCast(&argv));
             std.process.exit(1);
         }
 
@@ -102,8 +102,8 @@ pub const Pty = struct {
     //this causes SIGWINCH to be sent to the foreground process
     pub fn resize(self: Pty, cols: u32, rows: u32) void {
         var win_size = c.struct_winsize{
-            .ws_col = cols,
-            .ws_row = rows,
+            .ws_col = @intCast(cols),
+            .ws_row = @intCast(rows),
             .ws_xpixel = 0,
             .ws_ypixel = 0,
         };
