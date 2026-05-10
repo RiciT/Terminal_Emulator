@@ -36,7 +36,7 @@ pub const Cursor = struct {
 };
 
 //parser state
-const State = enum { ground, escape, csi, osc };
+const State = enum { ground, escape, csi, osc, charset };
 
 const MAX_PARAMS = 16;
 const MAX_OSC    = 512;
@@ -182,6 +182,7 @@ pub const Term = struct {
             .escape => self.doEscape(byte),
             .csi => self.doCsi(byte),
             .osc => self.doOsc(byte),
+            .charset => self.state = .ground, //consume and reset
         }
     }
 
@@ -204,6 +205,7 @@ pub const Term = struct {
                 self.state = .osc;
                 self.osc_len = 0;
             },
+            '(', ')', '*', '+' => self.state = .charset, //intercept G0/G1/G2/G3 designation
             'M' => self.doReverseIndex(), // RI - scroll region down
             '7' => self.saved_cursor = self.cursor, //DECSC
             '8' => self.cursor = self.saved_cursor, //DECRC

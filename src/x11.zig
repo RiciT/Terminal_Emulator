@@ -92,8 +92,8 @@ pub const Win = struct {
         //WM Class hints - for picom mainly
         const class_hint = c.XAllocClassHint();
         if (class_hint != null) {
-            class_hint.*.res_name = @constCast("termemul");
-            class_hint.*.res_class = @constCast("termemul");
+            class_hint.*.res_name = @ptrCast(@constCast("termemul").ptr);
+            class_hint.*.res_class = @ptrCast(@constCast("Termemul").ptr);
             _ = c.XSetClassHint(dpy, win, class_hint);
             _ = c.XFree(class_hint);
         }
