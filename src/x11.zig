@@ -236,64 +236,88 @@ pub const Win = struct {
 
         for (0..t.rows) |row| {
             var col: usize = 0;
+            //normal case
             while (col < t.cols) {
                 const g = &screen[row * t.cols + col];
-
-                // Determine the visual width of this specific cell
                 const char_width = c.wcwidth(@intCast(g.char));
                 const w: usize = if (char_width > 0) @intCast(char_width) else 1;
 
-                // Check if the main cell OR its dummy continuation cell needs a redraw
                 var needs_redraw = g.filled;
-                if (w == 2 and col + 1 < t.cols) {
-                    if (screen[row * t.cols + col + 1].filled) needs_redraw = true;
+                if (w == 2 and col + 1 < t.cols and screen[row * t.cols + col + 1].filled) {
+                    needs_redraw = true;
                 }
 
-                if (!needs_redraw) {
-                    col += w;
-                    continue;
+                if (needs_redraw) {
+                    const bg: u8 = if (g.attr.reverse) g.fg else g.bg;
+                    const px: c_int = @intCast(cfg.border_px + col * self.cw);
+                    const py: c_int = @intCast(cfg.border_px + row * self.ch);
+                    c.XftDrawRect(self.xft_draw, &self.colours[bg], px, py, self.cw * @as(u32, @intCast(w)), self.ch);
+                }
+                col += w;
+            }
+
+            //Draw text case
+            col = 0;
+            while (col < t.cols) {
+                const g = &screen[row * t.cols + col];
+                const char_width = c.wcwidth(@intCast(g.char));
+                const w: usize = if (char_width > 0) @intCast(char_width) else 1;
+
+                var needs_redraw = g.filled;
+                if (w == 2 and col + 1 < t.cols and screen[row * t.cols + col + 1].filled) {
+                    needs_redraw = true;
                 }
 
-                const fg: u8 = if (g.attr.reverse) g.bg else g.fg;
-                const bg: u8 = if (g.attr.reverse) g.fg else g.bg;
-
-                const px: c_int = @intCast(cfg.border_px + col * self.cw);
-                const py: c_int = @intCast(cfg.border_px + row * self.ch);
-
-                // Draw background scaled by character width
-                c.XftDrawRect(self.xft_draw, &self.colours[bg], px, py, self.cw * @as(u32, @intCast(w)), self.ch);
-
-                // Draw character (ignoring standard spaces and '0' continuation cells)
-                if (g.char != ' ' and g.char != 0 and !g.attr.invisible) {
-                    var buf: [4]u8 = undefined;
-                    const len = std.unicode.utf8Encode(g.char, buf[0..]) catch 1;
-                    const baseline: c_int = py + @as(c_int, @intCast(self.ca));
-
-                    c.XftDrawStringUtf8(
-                        self.xft_draw,
-                        &self.colours[fg],
-                        self.font,
-                        px,
-                        baseline,
-                        &buf,
-                        @intCast(len)
-                    );
-
-                    // Scale underline by character width
-                    if (g.attr.underline) {
-                        _ = c.XSetForeground(self.dpy, self.gc, self.colours[fg].pixel);
-                        _ = c.XDrawLine(self.dpy, self.win, self.gc, px, baseline + 1,
-                            px + @as(c_int, @intCast(self.cw * @as(u32, @intCast(w)))), baseline + 1);
+                //if i am not explicitly filled check if the cell to the right is filled
+                //if it is its background just painted over our right side bleed
+                if (!needs_redraw and col + w < t.cols) {
+                    if (screen[row * t.cols + col + w].filled) {
+                        needs_redraw = true;
                     }
                 }
 
-                // Mark cells as drawn
+                if (needs_redraw) {
+                    const fg: u8 = if (g.attr.reverse) g.bg else g.fg;
+                    const px: c_int = @intCast(cfg.border_px + col * self.cw);
+                    const py: c_int = @intCast(cfg.border_px + row * self.ch);
+
+                    if (g.char != ' ' and g.char != 0 and !g.attr.invisible) {
+                        var buf: [4]u8 = undefined;
+                        const len = std.unicode.utf8Encode(g.char, buf[0..]) catch 1;
+                        const baseline: c_int = py + @as(c_int, @intCast(self.ca));
+
+                        c.XftDrawStringUtf8(
+                            self.xft_draw,
+                            &self.colours[fg],
+                            self.font,
+                            px,
+                            baseline,
+                            buf[0..],
+                            @intCast(len)
+                        );
+
+                        if (g.attr.underline) {
+                            _ = c.XSetForeground(self.dpy, self.gc, self.colours[fg].pixel);
+                            _ = c.XDrawLine(self.dpy, self.win, self.gc, px, baseline + 1,
+                                px + @as(c_int, @intCast(self.cw * @as(u32, @intCast(w)))), baseline + 1);
+                        }
+                    }
+                }
+                col += w;
+            }
+
+            //clear filled flags
+            col = 0;
+            while (col < t.cols) {
+                const g = &screen[row * t.cols + col];
+                const char_width = c.wcwidth(@intCast(g.char));
+                const w: usize = if (char_width > 0) @intCast(char_width) else 1;
+
                 g.filled = false;
                 if (w == 2 and col + 1 < t.cols) {
                     screen[row * t.cols + col + 1].filled = false;
                 }
-
-                col += w; // Skip the next column if this was a wide character
+                col += w;
             }
         }
 
