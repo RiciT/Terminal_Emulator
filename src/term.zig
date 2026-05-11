@@ -4,7 +4,7 @@
 
 const std = @import("std");
 const cfg = @import("config.zig");
-const cLib = @import("c.zig").c; //will need to change var names so this can be 'c' for continuities' sake
+const c = @import("c.zig").c; //will need to change var names so this can be 'c' for continuities' sake
 
 //glyph attribute in a byte
 pub const Attr = packed struct {
@@ -134,9 +134,9 @@ pub const Term = struct {
         //cwopy what fits of the old primary screen
         const copy_rows = @min(rows, self.rows);
         const copy_cols = @min(cols, self.cols);
-        for (0..copy_rows) |r| {
-            for (0..copy_cols) |c|
-                new_scr[r * cols + c] = self.screen[r * self.cols + c];
+        for (0..copy_rows) |row| {
+            for (0..copy_cols) |col|
+                new_scr[row * cols + col] = self.screen[row * self.cols + col];
         }
 
         self.alloc.free(self.screen);
@@ -318,7 +318,7 @@ pub const Term = struct {
         const real_cp = if (self.is_acs) mapAsc(cp) else cp;
 
         //cLib.wcwidth
-        const width = cLib.wcwidth(@intCast(real_cp));
+        const width = c.wcwidth(@intCast(real_cp));
         std.debug.print("width: {}\n", .{width});
         if (width <= 0) return;
         const w: u32 = @intCast(width);
@@ -419,8 +419,8 @@ pub const Term = struct {
     fn clearRow(self: *Term, row: u32) void {
         const scr = self.cur();
         const start = row * self.cols;
-        for (0..self.cols) |c| {
-            scr[start + c] = Glyph{
+        for (0..self.cols) |col| {
+            scr[start + col] = Glyph{
                 .fg = self.cursor.fg, .bg = self.cursor.bg, .filled = true,
             };
         }
@@ -434,9 +434,9 @@ pub const Term = struct {
         const blank = Glyph{ .fg = self.cursor.fg, .bg = self.cursor.bg, .filled = true };
 
         switch (mode) {
-            0 => for (col..self.cols) |c| { scr[base + c] = blank; }, //cursor - end
-            1 => for (0..col + 1) |c| { scr[base + c] = blank; }, //start - cursor
-            2 => for (0..self.cols) |c| { scr[base + c] = blank; }, //whole line
+            0 => for (col..self.cols) |cl| { scr[base + cl] = blank; }, //cursor - end
+            1 => for (0..col + 1) |cl| { scr[base + cl] = blank; }, //start - cursor
+            2 => for (0..self.cols) |cl| { scr[base + cl] = blank; }, //whole line
             else => {},
         }
         self.filled = true;
@@ -450,13 +450,13 @@ pub const Term = struct {
 
         switch (mode) {
             0 => { //cursor to end of screen
-                for (col..self.cols) |c| scr[row * self.cols + c] = blank;
+                for (col..self.cols) |cl| scr[row * self.cols + cl] = blank;
                 var r = row + 1;
                 while (r < self.rows) : (r += 1) self.clearRow(r);
             },
             1 => { //start of screen to cursor
                 for (0..row) |r| self.clearRow(@intCast(r));
-                for (0..col + 1) |c| scr[row * self.cols + c] = blank;
+                for (0..col + 1) |cl| scr[row * self.cols + cl] = blank;
             },
             2, 3 => { //whole screen - cursor not moved per VT100 spec
                 for (0..self.rows) |r| self.clearRow(@intCast(r));
@@ -626,10 +626,10 @@ pub const Term = struct {
         const scr = self.cur();
         const base = row * self.cols;
         const blank = Glyph{ .fg = self.cursor.fg, .bg = self.cursor.bg, .filled = true };
-        var c = self.cols - 1;
-        while (c >= col + chars) : (c -= 1) { scr[base + c] = scr[base + c - chars]; scr[base + c].filled = true; }
-        var c2 = col;
-        while (c2 < col + chars and c2 < self.cols) : (c2 += 1) scr[base + c2] = blank;
+        var ch = self.cols - 1;
+        while (ch >= col + chars) : (ch -= 1) { scr[base + ch] = scr[base + ch - chars]; scr[base + ch].filled = true; }
+        var ch2 = col;
+        while (ch2 < col + chars and ch2 < self.cols) : (ch2 += 1) scr[base + ch2] = blank;
     }
 
     fn deleteChars(self: *Term, n: i32) void {
@@ -639,9 +639,9 @@ pub const Term = struct {
         const scr = self.cur();
         const base = row * self.cols;
         const blank = Glyph{ .fg = self.cursor.fg, .bg = self.cursor.bg, .filled = true };
-        var c = col;
-        while (c + chars < self.cols) : (c += 1) { scr[base + c] = scr[base + c + chars]; scr[base + c].filled = true; }
-        while (c < self.cols) : (c += 1) scr[base + c] = blank;
+        var ch = col;
+        while (ch + chars < self.cols) : (ch += 1) { scr[base + ch] = scr[base + ch + chars]; scr[base + ch].filled = true; }
+        while (ch < self.cols) : (ch += 1) scr[base + ch] = blank;
     }
 
     fn doReset(self: *Term) void {
