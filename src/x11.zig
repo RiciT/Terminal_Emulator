@@ -235,30 +235,38 @@ pub const Win = struct {
         self.old_cursor_y = t.cursor.y;
 
         for (0..t.rows) |row| {
-            for (0..t.cols) |col| {
+            var col: usize = 0;
+            while (col < t.cols) {
                 const g = &screen[row * t.cols + col];
-                if (!g.filled) continue;
 
-                //reverse order swaps fg and bg
+                // Determine the visual width of this specific cell
+                const char_width = c.wcwidth(@intCast(g.char));
+                const w: usize = if (char_width > 0) @intCast(char_width) else 1;
+
+                // Check if the main cell OR its dummy continuation cell needs a redraw
+                var needs_redraw = g.filled;
+                if (w == 2 and col + 1 < t.cols) {
+                    if (screen[row * t.cols + col + 1].filled) needs_redraw = true;
+                }
+
+                if (!needs_redraw) {
+                    col += w;
+                    continue;
+                }
+
                 const fg: u8 = if (g.attr.reverse) g.bg else g.fg;
                 const bg: u8 = if (g.attr.reverse) g.fg else g.bg;
 
                 const px: c_int = @intCast(cfg.border_px + col * self.cw);
                 const py: c_int = @intCast(cfg.border_px + row * self.ch);
 
-                //fill bg rectangle with bg colour pixel
-                // use XFillRectangle because only solid colours are needed
-                //_ = c.XSetForeground(self.dpy, self.gc, self.colours[bg].pixel);
-                //_ = c.XFillRectangle(self.dpy, self.win, self.gc, px, py, self.cw, self.ch);
-                //since we dont just need solid colours anymore
-                c.XftDrawRect(self.xft_draw, &self.colours[bg], px, py, self.cw, self.ch);
+                // Draw background scaled by character width
+                c.XftDrawRect(self.xft_draw, &self.colours[bg], px, py, self.cw * @as(u32, @intCast(w)), self.ch);
 
-                //draw character (we can skip spaces)
+                // Draw character (ignoring standard spaces and '0' continuation cells)
                 if (g.char != ' ' and g.char != 0 and !g.attr.invisible) {
                     var buf: [4]u8 = undefined;
-                    const len = std.unicode.utf8Encode(g.char, &buf) catch 1;
-
-                    //XftDrawStringUtf8 takes the baseline y so modify with the ascent
+                    const len = std.unicode.utf8Encode(g.char, buf[0..]) catch 1;
                     const baseline: c_int = py + @as(c_int, @intCast(self.ca));
 
                     c.XftDrawStringUtf8(
@@ -271,15 +279,21 @@ pub const Win = struct {
                         @intCast(len)
                     );
 
-                    //underline
+                    // Scale underline by character width
                     if (g.attr.underline) {
                         _ = c.XSetForeground(self.dpy, self.gc, self.colours[fg].pixel);
                         _ = c.XDrawLine(self.dpy, self.win, self.gc, px, baseline + 1,
-                            px + @as(c_int, @intCast(self.cw)), baseline + 1);
+                            px + @as(c_int, @intCast(self.cw * @as(u32, @intCast(w)))), baseline + 1);
                     }
                 }
 
+                // Mark cells as drawn
                 g.filled = false;
+                if (w == 2 and col + 1 < t.cols) {
+                    screen[row * t.cols + col + 1].filled = false;
+                }
+
+                col += w; // Skip the next column if this was a wide character
             }
         }
 

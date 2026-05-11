@@ -4,6 +4,7 @@
 
 const std = @import("std");
 const cfg = @import("config.zig");
+const cLib = @import("c.zig").c; //will need to change var names so this can be 'c' for continuities' sake
 
 //glyph attribute in a byte
 pub const Attr = packed struct {
@@ -316,8 +317,14 @@ pub const Term = struct {
         //check if we are shifted to asc or not
         const real_cp = if (self.is_acs) mapAsc(cp) else cp;
 
+        //cLib.wcwidth
+        const width = cLib.wcwidth(@intCast(real_cp));
+        std.debug.print("width: {}\n", .{width});
+        if (width <= 0) return;
+        const w: u32 = @intCast(width);
+
         //wrap line
-        if (self.cursor.x >= self.cols) {
+        if (self.cursor.x + @as(i32, @intCast(w)) > self.cols) {
             self.cursor.x = 0;
             self.cursor.y += 1;
             self.checkScroll();
@@ -332,6 +339,19 @@ pub const Term = struct {
             .filled = true,
         };
         self.cursor.x += 1;
+
+        if (w == 2 and self.cursor.x < self.cols) {
+            const dummy = self.cell(@intCast(self.cursor.x), @intCast(self.cursor.y));
+            dummy.* = Glyph{
+                .char = 0, //0 will mean it is the right half of a wide character
+                .fg = self.cursor.fg,
+                .bg = self.cursor.bg,
+                .attr = self.cursor.attr,
+                .filled = true,
+            };
+            self.cursor.x += 1;
+        }
+
         self.filled = true;
     }
 

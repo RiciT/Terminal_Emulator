@@ -25,6 +25,9 @@ const Pty = @import("pty.zig").Pty; // script that handles pty
 const Win = @import("x11.zig").Win; //script that handles x11 window
 
 pub fn main() !void {
+    //init locale for unicode chars
+    _ = c.setlocale(c.LC_ALL, "");
+
     //allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();

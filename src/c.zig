@@ -1,6 +1,11 @@
 //everything we need from the c libraries of X11 and other c libraries for sys and pty
 
 pub const c = @cImport({
+    //at top for cDefine and used for getting char width
+    @cDefine("_XOPEN_SOURCE", "700");
+    @cInclude("wchar.h");
+    @cInclude("locale.h");
+
     //X11
     @cInclude("X11/X.h");
     @cInclude("X11/Xlib.h");
